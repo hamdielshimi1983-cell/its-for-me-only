@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Zoho QnA - e&</title>
+  <title>Zoho QnA - e& AI Assistant</title>
   <style>
     :root{
       --primary:#0066cc;
@@ -14,24 +14,31 @@
       --radius:12px;
     }
     *{box-sizing:border-box}
-    body{margin:0;font-family: "Tajawal", "Tahoma", Arial, sans-serif;background:var(--bg);color:#0b1220;line-height:1.5}
+    body{margin:0;font-family: "Tajawal", "Tahoma", Arial, sans-serif;background:var(--bg);color:#0b1220;line-height:1.6}
     .container{max-width:1100px;margin:28px auto;padding:18px}
-    .top{display:flex;gap:18px;align-items:center;justify-content:space-between;margin-bottom:18px}
+    .top{display:flex;gap:18px;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap}
     .brand{display:flex;align-items:center;gap:12px}
     .brand img{height:44px}
     .card{background:var(--card);border-radius:var(--radius);box-shadow:0 6px 20px rgba(10,20,40,0.06);padding:18px}
     h1{margin:0;font-size:20px}
-    .controls{display:flex;gap:12px;align-items:center}
-    .btn{background:var(--primary);color:#fff;border:none;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600}
-    .btn.ghost{background:transparent;color:var(--primary);border:1px solid rgba(0,102,204,0.12)}
-    .layout{display:grid;grid-template-columns: 1fr 420px;gap:18px;margin-top:14px}
+    .ai-badge{display:inline-block;background:#16a34a;color:white;padding:4px 10px;border-radius:6px;font-size:11px;margin-right:8px;font-weight:600}
+    .layout{display:grid;grid-template-columns: 1fr 380px;gap:18px;margin-top:14px}
     @media(max-width:960px){.layout{grid-template-columns:1fr;}}
-    label{display:block;font-weight:700;margin-top:10px}
-    select,textarea,input{width:100%;padding:10px;border-radius:10px;border:1px solid #e8eef8;background:#fbfdff}
-    textarea{min-height:110px;resize:vertical}
-    .result{white-space:pre-wrap;margin-top:12px;background:#fcfeff;padding:12px;border-radius:10px;border:1px solid #eef6ff}
-    .sources{margin-top:10px;color:var(--muted);font-size:13px}
-    .ai-badge{display:inline-block;background:#16a34a;color:white;padding:4px 8px;border-radius:6px;font-size:11px;margin-left:8px}
+    label{display:block;font-weight:700;margin-top:10px;font-size:14px}
+    select,textarea,input{width:100%;padding:10px;border-radius:10px;border:1px solid #e8eef8;background:#fbfdff;font-family:inherit}
+    textarea{min-height:110px;resize:vertical;font-size:14px}
+    .btn{background:var(--primary);color:#fff;border:none;padding:11px 16px;border-radius:10px;cursor:pointer;font-weight:600;font-size:14px;transition:all 0.2s}
+    .btn:hover{background:#0052a3;transform:translateY(-1px)}
+    .btn:disabled{opacity:0.6;cursor:not-allowed}
+    .result{white-space:pre-wrap;margin-top:12px;background:#fcfeff;padding:16px;border-radius:10px;border:1px solid #eef6ff;line-height:1.8;font-size:14px}
+    .result h1{font-size:22px;margin:0 0 12px 0;color:#003366}
+    .result h2{font-size:18px;margin:20px 0 10px 0;color:#0066cc}
+    .result h3{font-size:16px;margin:16px 0 8px 0;color:#333}
+    .sources{margin-top:10px;font-size:13px}
+    .ai-powered{background:#e0f2fe;padding:10px;border-radius:6px;margin-bottom:10px;border:1px solid #bae6fd}
+    .examples{margin-top:16px}
+    .example-btn{display:block;width:100%;text-align:right;background:#f8fafc;border:1px solid #e8eef8;padding:10px;border-radius:8px;margin-top:8px;cursor:pointer;transition:all 0.2s;font-size:13px;color:#333}
+    .example-btn:hover{background:#e8eef8;border-color:#cbd5e1}
   </style>
 </head>
 <body>
@@ -41,13 +48,19 @@
         <img src="https://ik.imagekit.io/xtj3m9hth/image-remove1bg-preview%20(3).png?updatedAt=1761220721716" alt="e& logo">
         <img src="https://ik.imagekit.io/weo7pcw8v/image-removebg-preview%20(3).png?updatedAt=1761788895997" alt="Zoho logo" style="height:36px">
         <div>
-          <h1>نظام دعم مبيعات Zoho — e& <span class="ai-badge">AI مفعّل</span></h1>
-          <div style="color:var(--muted);font-size:13px;margin-top:4px">مساعد ذكي • إجابات شاملة بالعربية</div>
+          <h1>
+            <span class="ai-badge">🤖 AI</span>
+            مساعد مبيعات Zoho الذكي
+          </h1>
+          <div style="color:var(--muted);font-size:13px;margin-top:4px">
+            مدعوم بالذكاء الاصطناعي • إجابات شاملة ومخصصة
+          </div>
         </div>
       </div>
     </div>
 
     <div class="layout">
+      <!-- Main Content -->
       <div>
         <div class="card">
           <label>اختر القطاع (اختياري)</label>
@@ -64,19 +77,20 @@
           <label>نوع السؤال (اختياري)</label>
           <select id="scenario">
             <option value="">عام</option>
-            <option value="discovery">اكتشاف</option>
-            <option value="objection">اعتراض</option>
-            <option value="value">قيمة المنتج</option>
-            <option value="recommend">اختيار التطبيق</option>
-            <option value="workflow">مشكلة تشغيلية</option>
-            <option value="closing">إغلاق / لوجستيات</option>
+            <option value="discovery">اكتشاف الاحتياجات</option>
+            <option value="objection">معالجة اعتراض</option>
+            <option value="value">توضيح القيمة</option>
+            <option value="recommend">اختيار التطبيق المناسب</option>
+            <option value="workflow">حل مشكلة تشغيلية</option>
+            <option value="closing">إغلاق الصفقة</option>
           </select>
 
-          <label>اكتب سؤال العميل أو مشكلته هنا</label>
-          <textarea id="question" placeholder="مثال: لدي مشكلة في تتبع المخزون في متاجري"></textarea>
+          <label>اكتب سؤال العميل أو المشكلة التي يواجهها</label>
+          <textarea id="question" placeholder="مثال: لدي مشكلة في تتبع المخزون في متاجري الثلاثة"></textarea>
 
-          <div style="display:flex;gap:10px;margin-top:12px;align-items:center">
-            <button id="askBtn" class="btn">إرسال السؤال</button>
+          <div style="display:flex;gap:10px;margin-top:12px">
+            <button id="askBtn" class="btn">🔍 إرسال السؤال</button>
+            <button id="clearBtn" class="btn" style="background:#64748b">🗑️ مسح</button>
           </div>
 
           <div id="result" class="result" style="display:none"></div>
@@ -84,14 +98,35 @@
         </div>
       </div>
 
+      <!-- Sidebar -->
       <div>
         <div class="card">
-          <h3 style="margin:0 0 8px 0">أمثلة على الأسئلة</h3>
-          <ul style="color:var(--muted);padding-left:18px">
-            <li><strong>مشكلة محددة:</strong> "لدي مشكلة في تتبع المخزون"</li>
-            <li><strong>استكشاف منتج:</strong> "ما هو Zoho CRM؟"</li>
-            <li><strong>اعتراض:</strong> "العميل يقول النظام معقد"</li>
-            <li><strong>مقارنة:</strong> "ما الفرق بين CRM و Books؟"</li>
+          <h3 style="margin:0 0 12px 0;font-size:16px">💡 أمثلة سريعة</h3>
+          <div class="examples">
+            <button class="example-btn" data-q="لدي مشكلة في تتبع المخزون في متاجري">
+              📦 مشكلة في تتبع المخزون
+            </button>
+            <button class="example-btn" data-q="ليس لدي سيطرة على العملاء المحتملين بعد الحملات التسويقية">
+              👥 فقدان العملاء المحتملين
+            </button>
+            <button class="example-btn" data-q="ما هو Zoho CRM وما يمكنه أن يفعل؟">
+              ℹ️ ما هو Zoho CRM؟
+            </button>
+            <button class="example-btn" data-q="العميل يقول أن النظام معقد جداً">
+              ⚠️ اعتراض: النظام معقد
+            </button>
+          </div>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <div class="card">
+          <h3 style="margin:0 0 8px 0;font-size:16px">📌 ملاحظات</h3>
+          <ul style="color:var(--muted);padding-right:18px;font-size:13px;line-height:1.8;margin:8px 0">
+            <li>الذكاء الاصطناعي يحلل السؤال تلقائياً</li>
+            <li>يقدم إجابات مخصصة حسب نوع السؤال</li>
+            <li>يوفر استراتيجية بيع واضحة</li>
+            <li>يستخدم معلومات من قاعدة المعرفة</li>
           </ul>
         </div>
       </div>
@@ -99,58 +134,111 @@
   </div>
 
 <script>
+// ===== Main Functions =====
 async function postJson(url, body){
-  const res = await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body), credentials:'same-origin' });
+  const res = await fetch(url, { 
+    method: 'POST', 
+    headers: { 'Content-Type': 'application/json' }, 
+    body: JSON.stringify(body)
+  });
   return res.json();
 }
 
 const askBtn = document.getElementById('askBtn');
+const clearBtn = document.getElementById('clearBtn');
 const resultDiv = document.getElementById('result');
 const sourcesDiv = document.getElementById('sources');
+const questionInput = document.getElementById('question');
 
+// Ask Button Handler
 askBtn.addEventListener('click', async ()=>{
-  const q = document.getElementById('question').value.trim();
+  const q = questionInput.value.trim();
   if(!q){ alert('الرجاء كتابة سؤال'); return; }
   
+  // Show loading
+  askBtn.disabled = true;
+  askBtn.textContent = '⏳ جاري التحليل...';
   resultDiv.style.display = 'block';
-  resultDiv.textContent = 'جاري البحث والتحليل بواسطة الذكاء الاصطناعي...';
-  sourcesDiv.textContent = '';
+  resultDiv.innerHTML = '<div style="text-align:center;padding:20px">🤖 الذكاء الاصطناعي يحلل سؤالك...</div>';
+  sourcesDiv.innerHTML = '';
   
   const industry = document.getElementById('industry').value;
   const scenario = document.getElementById('scenario').value;
   
   try{
-    // FIXED: Changed use_gemini to TRUE
+    // 🔥 THIS IS THE KEY: use_gemini is TRUE
     const resp = await postJson('/ask', { 
       question: q, 
       industry, 
       scenario, 
       top_k: 6, 
-      use_gemini: true  // ✅ AI enabled!
+      use_gemini: true  // ✅ AI ENABLED!
     });
     
+    // Format and display answer
     resultDiv.innerHTML = formatMarkdown(resp.answer_ar || 'لا توجد إجابة');
     
+    // Show AI badge if powered by AI
     if(resp.ai_powered) {
-      sourcesDiv.innerHTML = '<div style="background:#e0f2fe;padding:8px;border-radius:6px;margin-bottom:10px">✨ <strong>مدعوم بالذكاء الاصطناعي</strong></div>';
+      sourcesDiv.innerHTML = `
+        <div class="ai-powered">
+          ✨ <strong>مدعوم بالذكاء الاصطناعي</strong> • 
+          النمط: ${resp.query_mode === 'pain-point' ? 'حل مشكلة محددة' : 'استكشاف عام'}
+        </div>
+      `;
     }
     
-    if(resp.sources && resp.sources.length>0){
-      sourcesDiv.innerHTML += '<strong>المصادر:</strong><br/>' + 
-        resp.sources.map(s=>`${s.file} - درجة التطابق: ${(s.score*100).toFixed(1)}%`).join('<br/>');
+    // Show sources
+    if(resp.sources && resp.sources.length > 0){
+      sourcesDiv.innerHTML += `
+        <div style="color:var(--muted);margin-top:10px">
+          <strong>📚 المصادر المستخدمة:</strong><br/>
+          ${resp.sources.map(s => `
+            • ${s.file} (درجة التطابق: ${(s.score*100).toFixed(1)}%)
+          `).join('<br/>')}
+        </div>
+      `;
     }
-  }catch(e){
-    resultDiv.textContent = 'حدث خطأ: ' + e.message;
+  } catch(e){
+    resultDiv.innerHTML = `<div style="color:#dc2626;padding:16px">❌ حدث خطأ: ${e.message}</div>`;
+  } finally {
+    askBtn.disabled = false;
+    askBtn.textContent = '🔍 إرسال السؤال';
   }
 });
 
-// Simple markdown formatter
+// Clear Button
+clearBtn.addEventListener('click', ()=> {
+  questionInput.value = '';
+  resultDiv.style.display = 'none';
+  sourcesDiv.innerHTML = '';
+});
+
+// Example Questions
+document.querySelectorAll('.example-btn').forEach(btn => {
+  btn.addEventListener('click', ()=> {
+    questionInput.value = btn.getAttribute('data-q');
+    askBtn.click();
+  });
+});
+
+// Allow Enter to submit (with Ctrl/Cmd)
+questionInput.addEventListener('keydown', (e)=> {
+  if((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    askBtn.click();
+  }
+});
+
+// ===== Simple Markdown Formatter =====
 function formatMarkdown(text) {
   return text
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')
     .replace(/^# (.+)$/gm, '<h1>$1</h1>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/^(\d+)\. (.+)$/gm, '<li>$2</li>')
+    .replace(/\n\n/g, '<br/><br/>')
     .replace(/\n/g, '<br/>');
 }
 </script>

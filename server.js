@@ -1,6 +1,8 @@
 import express from "express";
 import dotenv from "dotenv";
 import path from "path";
+import session from "express-session";
+import bcrypt from "bcrypt";
 
 dotenv.config();
 
@@ -8,12 +10,67 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files from the `public` directory
+// ===== SESSION SETUP =====
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "zoho-qna-secret-key",
+    resave: false,
+    saveUninitialized: false,
+    cookie: { 
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    },
+  })
+);
+
+// ===== AUTH MIDDLEWARE =====
+function ensureAuth(req, res, next) {
+  if (req.session && req.session.user) {
+    return next();
+  }
+  return res.status(401).json({ error: "Not authenticated" });
+}
+
+// ===== STATIC FILES =====
 const publicDir = path.join(process.cwd(), "public");
 app.use(express.static(publicDir));
 
-// Root route: serve `public/index.html`
+// ===== AUTH ROUTES =====
+app.post("/login", async (req, res) => {
+  const { username, password } = req.body || {};
+  
+  const adminUser = process.env.ADMIN_USER || "admin";
+  const adminPass = process.env.ADMIN_PASS || "password";
+  
+  if (username === adminUser && password === adminPass) {
+    req.session.user = { username };
+    return res.json({ ok: true });
+  }
+  
+  return res.status(401).json({ ok: false, error: "Invalid credentials" });
+});
+
+app.post("/logout", (req, res) => {
+  req.session.destroy((err) => {
+    if (err) return res.status(500).json({ error: "Logout failed" });
+    res.json({ ok: true });
+  });
+});
+
+app.get("/check-auth", (req, res) => {
+  if (req.session && req.session.user) {
+    return res.json({ authenticated: true, user: req.session.user });
+  }
+  return res.json({ authenticated: false });
+});
+
+// ===== ROOT ROUTE =====
 app.get("/", (req, res) => {
+  // If not authenticated, show login page
+  if (!req.session || !req.session.user) {
+    return res.sendFile(path.join(publicDir, "login.html"));
+  }
+  // Otherwise show main app
   res.sendFile(path.join(publicDir, "index.html"));
 });
 
@@ -52,7 +109,7 @@ function cosine(vec1, vec2) {
   return denominator === 0 ? 0 : dotProduct / denominator;
 }
 
-// ===== ENHANCED KNOWLEDGE BASE =====
+// ===== KNOWLEDGE BASE =====
 const INDEX = [
   {
     id: "zoho_1",
@@ -104,15 +161,18 @@ INDEX.forEach(chunk => {
   chunk.vec = termFreqVector(tokens);
 });
 
-// ===== GEMINI API INTEGRATION =====
+// ===== GEMINI API =====
 async function callGeminiAPI(prompt) {
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
   
   if (!GEMINI_API_KEY) {
-    throw new Error("GEMINI_API_KEY not found in environment variables");
+    console.warn("⚠️ GEMINI_API_KEY not configured - using fallback mode");
+    throw new Error("GEMINI_API_KEY not configured");
   }
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
+  
+  console.log("🤖 Calling Gemini API...");
   
   const response = await fetch(url, {
     method: 'POST',
@@ -136,19 +196,21 @@ async function callGeminiAPI(prompt) {
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+    console.error("❌ Gemini API error:", response.status, errorText);
+    throw new Error(`Gemini API error: ${response.status}`);
   }
 
   const data = await response.json();
   
   if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+    console.log("✅ Gemini API response received");
     return data.candidates[0].content.parts[0].text;
   }
   
   throw new Error("Unexpected response format from Gemini API");
 }
 
-// ===== HELPER: DETECT PAIN POINT =====
+// ===== PAIN POINT DETECTION =====
 function detectPainPoint(question) {
   const painKeywords = [
     'مشكلة', 'صعوبة', 'لا أستطيع', 'لا يمكنني', 'تحدي', 'لا نستطيع',
@@ -160,14 +222,13 @@ function detectPainPoint(question) {
   return painKeywords.some(keyword => questionLower.includes(keyword));
 }
 
-// ===== IMPROVED GEMINI PROMPT BUILDER =====
+// ===== PROMPT BUILDER =====
 function buildGeminiPrompt(question, context, industry, scenario) {
   const isPainPoint = detectPainPoint(question);
   
   let prompt = "";
   
   if (isPainPoint) {
-    // MODE 1: Pain-Point Solution (What & Why for THIS client)
     prompt = `أنت مستشار مبيعات خبير في حلول Zoho. عميل يواجه مشكلة محددة ويحتاج حل عملي.
 
 **المشكلة التي يواجهها العميل:**
@@ -196,94 +257,43 @@ ${context}
 [3-4 ميزات محددة تحل هذه المشكلة بالضبط]
 
 ### لماذا يناسب عملك:
-- 💰 **العائد المالي:** [مثال: توفير X% من التكاليف، زيادة Y% في الإيرادات]
-- ⏱️ **توفير الوقت:** [مثال: تقليل Z ساعة أسبوعياً]
-- 📈 **النمو:** [مثال: القدرة على التوسع دون تعقيدات]
-
-## ⏰ لماذا الآن؟
-- ✓ المشكلة تكلفك خسائر يومية
-- ✓ التطبيق سريع (1-2 أسبوع)
-- ✓ يمكنك التجربة مجاناً لمدة 14 يوم
+- 💰 **العائد المالي:** [مثال محدد]
+- ⏱️ **توفير الوقت:** [مثال محدد]
+- 📈 **النمو:** [مثال محدد]
 
 ## 🎤 كيف تقدم العرض للعميل:
-**جملة الافتتاح:**
-"[جملة قوية واحدة تلخص الحل - يجب أن تكون مباشرة ومؤثرة]"
-
-**نقاط البيع الرئيسية:**
-1. [نقطة بيع قوية]
-2. [نقطة بيع قوية]
-3. [نقطة بيع قوية]
-
----
-**مهم:** اجعل الإجابة عملية وقابلة للتطبيق فوراً. استخدم أرقام محددة من السياق.`;
+[3 نقاط بيع رئيسية]`;
 
   } else {
-    // MODE 2: General Discovery (What, To Whom, When)
-    prompt = `أنت مستشار مبيعات خبير في منتجات Zoho. مندوب مبيعات يريد معلومات عامة عن منتج لاستكشاف الفرص.
+    prompt = `أنت مستشار مبيعات خبير في منتجات Zoho.
 
 **السؤال:**
 ${question}
-
-**القطاع:** ${industry ? getIndustryLabel(industry) : 'غير محدد'}
 
 **السياق من قاعدة المعرفة:**
 ${context}
 
 ---
 
-**مهمتك:** قدم دليل شامل لمندوب المبيعات عن هذا المنتج.
-
-قدم الإجابة بهذا التنسيق:
-
-# 📱 [اسم المنتج] - دليل البيع السريع
-
-## 1️⃣ ما هو المنتج (What)
-**الوصف في جملة واحدة:**
-[جملة واحدة واضحة]
-
-**الميزات الأساسية:**
-- ✓ [ميزة 1]
-- ✓ [ميزة 2]
-- ✓ [ميزة 3]
-- ✓ [ميزة 4]
-
-## 2️⃣ لمن نقدمه (To Whom)
-
-### العملاء المثاليون:
-**القطاعات الأنسب:**
-1. **[قطاع 1]** - حجم الشركة: [X-Y موظف]
-2. **[قطاع 2]** - حجم الشركة: [X-Y موظف]
-
-### علامات العميل المثالي:
-- 🎯 [علامة 1]
-- 🎯 [علامة 2]
-- 🎯 [علامة 3]
-
-## 3️⃣ متى نقدمه (When)
-
-### إشارات الشراء (Buying Signals):
-استمع لهذه الجمل من العميل:
-- ✅ "[جملة محددة]"
-- ✅ "[جملة محددة]"
-- ✅ "[جملة محددة]"
-
-## 4️⃣ عبارة البيع السريعة
-"[جملة واحدة قوية تفتح المحادثة - 15-20 كلمة]"
-
----
-**مهم:** اجعل الإجابة عملية وسهلة الحفظ لمندوب المبيعات.`;
+قدم دليل شامل لمندوب المبيعات عن هذا المنتج متضمناً: ما هو، لمن، متى نقدمه، وعبارة بيع سريعة.`;
   }
   
   return prompt;
 }
 
-// ===== ASK ENDPOINT WITH AI =====
-app.post("/ask", async (req, res) => {
+// ===== ASK ENDPOINT =====
+app.post("/ask", ensureAuth, async (req, res) => {
   const { question, industry, scenario, top_k = 6, use_gemini = true } = req.body || {};
-  if (!question) return res.status(400).json({ error: "question required" });
+  
+  if (!question) {
+    return res.status(400).json({ error: "question required" });
+  }
+
+  console.log(`📝 Question received: "${question.substring(0, 50)}..."`);
+  console.log(`🔧 Config: industry=${industry}, scenario=${scenario}, use_gemini=${use_gemini}`);
 
   try {
-    // 1. Search local knowledge base
+    // 1. Search knowledge base
     const qtokens = tokenize(question);
     const qvec = termFreqVector(qtokens);
 
@@ -305,23 +315,35 @@ app.post("/ask", async (req, res) => {
       lowConfidence = true;
     }
 
-    // 2. Build context from knowledge base
+    console.log(`📊 Found ${relevant.length} relevant chunks`);
+
+    // 2. Build context
     const context = relevant.map(chunk => chunk.text).join("\n\n");
 
-    // 3. Use Gemini AI if enabled
+    // 3. Generate answer
     let answer = "";
+    let aiPowered = false;
     
     if (use_gemini && process.env.GEMINI_API_KEY) {
-      const prompt = buildGeminiPrompt(question, context, industry, scenario);
-      answer = await callGeminiAPI(prompt);
+      try {
+        const prompt = buildGeminiPrompt(question, context, industry, scenario);
+        answer = await callGeminiAPI(prompt);
+        aiPowered = true;
+      } catch (geminiError) {
+        console.error("⚠️ Gemini failed, using fallback:", geminiError.message);
+        answer = buildFallbackAnswer(question, relevant, industry, scenario);
+      }
     } else {
+      console.log("ℹ️ Using fallback mode (Gemini disabled)");
       answer = buildFallbackAnswer(question, relevant, industry, scenario);
     }
+
+    console.log("✅ Answer generated successfully");
 
     res.json({ 
       answer_ar: answer, 
       low_confidence: lowConfidence,
-      ai_powered: use_gemini && !!process.env.GEMINI_API_KEY,
+      ai_powered: aiPowered,
       query_mode: detectPainPoint(question) ? "pain-point" : "discovery",
       sources: relevant.map(s => ({
         file: path.basename(s.file),
@@ -331,7 +353,7 @@ app.post("/ask", async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Error in /ask:", error);
+    console.error("❌ Error in /ask:", error);
     res.status(500).json({ 
       error: "حدث خطأ في معالجة السؤال",
       details: error.message 
@@ -352,11 +374,6 @@ function buildFallbackAnswer(question, relevantChunks, industry, scenario) {
   relevantChunks.forEach((chunk, idx) => {
     answer += `### ${idx + 1}. من ${path.basename(chunk.file)}\n\n`;
     answer += `${chunk.text}\n\n`;
-  });
-  
-  answer += `## المصادر:\n\n`;
-  relevantChunks.forEach((chunk, idx) => {
-    answer += `${idx + 1}. **${path.basename(chunk.file)}** - درجة التطابق: ${(chunk.score * 100).toFixed(1)}%\n`;
   });
   
   return answer;
@@ -387,19 +404,22 @@ function getScenarioLabel(scenario) {
   return labels[scenario] || scenario;
 }
 
-// Health check
+// ===== HEALTH CHECK =====
 app.get("/health", (req, res) => {
   res.json({ 
     status: "ok", 
     uptime: process.uptime(), 
     timestamp: Date.now(),
-    gemini_configured: !!process.env.GEMINI_API_KEY
+    gemini_configured: !!process.env.GEMINI_API_KEY,
+    auth_enabled: true
   });
 });
 
-// Start server
+// ===== START SERVER =====
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
-  console.log(`Gemini AI: ${process.env.GEMINI_API_KEY ? 'Enabled ✅' : 'Disabled ❌'}`);
+  console.log(`\n🚀 Server running on port ${PORT}`);
+  console.log(`🔐 Auth: Enabled`);
+  console.log(`🤖 Gemini AI: ${process.env.GEMINI_API_KEY ? '✅ Enabled' : '❌ Disabled (fallback mode)'}`);
+  console.log(`📚 Knowledge Base: ${INDEX.length} chunks loaded\n`);
 });

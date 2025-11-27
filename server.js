@@ -3,8 +3,12 @@ import dotenv from "dotenv";
 import path from "path";
 import session from "express-session";
 import bcrypt from "bcrypt";
+import { fileURLToPath } from 'url';
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(express.json());
@@ -32,7 +36,7 @@ function ensureAuth(req, res, next) {
 }
 
 // ===== STATIC FILES =====
-const publicDir = path.join(process.cwd(), "public");
+const publicDir = path.join(__dirname, "public");
 app.use(express.static(publicDir));
 
 // ===== AUTH ROUTES =====
